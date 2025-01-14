@@ -25,7 +25,22 @@ async function run() {
     const mealsCollection = client.db("MealCollectionDB").collection("Meals");
 
     app.get("/meals", async (req, res) => {
-      const result = await mealsCollection.find().toArray();
+      const filter = req.query.filter.toLowerCase();;
+      const search = req.query.search;
+      const sort = req.query.sort;
+      let options = {};
+      if (sort) options = { sort: { price: sort === "asc" ? 1 : -1 } };
+
+      let query = {
+        title: {
+          $regex: search,
+          $options: "i",
+        },
+      };
+
+      if (filter) query.category = filter;
+
+      const result = await mealsCollection.find(query, options).toArray();
       res.send(result);
     });
 
