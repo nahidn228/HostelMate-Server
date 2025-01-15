@@ -25,7 +25,7 @@ async function run() {
     const mealsCollection = client.db("MealCollectionDB").collection("Meals");
 
     app.get("/meals", async (req, res) => {
-      let filter = req.query.filter;
+      const filter = req.query.filter;
       const search = req.query.search || "";
       const sort = req.query.sort;
       let options = {};
@@ -44,10 +44,23 @@ async function run() {
       res.send(result);
     });
 
+    //get single meal
     app.get("/meals/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await mealsCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Insert a review
+    app.post("/meals/:id", async (req, res) => {
+      const id = req.params.id;
+      const newReview = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedData = {
+        $push: { reviews: newReview }, // Use $push to append the new review
+      };
+      const result = await mealsCollection.updateOne(filter, updatedData);
       res.send(result);
     });
 
