@@ -22,10 +22,29 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    const usersCollection = client.db("MealCollectionDB").collection("Users");
     const mealsCollection = client.db("MealCollectionDB").collection("Meals");
     const upcomingMealsCollection = client
       .db("MealCollectionDB")
       .collection("upcomingMeals");
+
+    // User related API
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      // insert email if user doesn't exists:
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     //get all published meals
     app.get("/meals", async (req, res) => {
@@ -34,16 +53,13 @@ async function run() {
       const sort = req.query.sort;
       let options = {};
       if (sort) options = { sort: { price: sort === "asc" ? 1 : -1 } };
-
       let query = {
         title: {
           $regex: search,
           $options: "i",
         },
       };
-
       if (filter) query.category = filter;
-
       const result = await mealsCollection.find(query, options).toArray();
       res.send(result);
     });
@@ -101,8 +117,8 @@ async function run() {
 
       // If the user hasn't liked the meal, proceed with updating
       const update = {
-        $inc: { likes: 1 }, 
-        $addToSet: { likedBy }, 
+        $inc: { likes: 1 },
+        $addToSet: { likedBy },
       };
       const result = await upcomingMealsCollection.updateOne(filter, update);
       res.send(result);
