@@ -23,7 +23,11 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const mealsCollection = client.db("MealCollectionDB").collection("Meals");
+    const upcomingMealsCollection = client
+      .db("MealCollectionDB")
+      .collection("upcomingMeals");
 
+    //get all published meals
     app.get("/meals", async (req, res) => {
       const filter = req.query.filter;
       const search = req.query.search || "";
@@ -58,9 +62,49 @@ async function run() {
       const newReview = req.body;
       const filter = { _id: new ObjectId(id) };
       const updatedData = {
-        $push: { reviews: newReview }, // Use $push to append the new review
+        $push: { reviews: newReview },
       };
       const result = await mealsCollection.updateOne(filter, updatedData);
+      res.send(result);
+    });
+
+    // Increase like count in single meal data
+    app.patch("/meals/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $inc: { likes: 1 },
+      };
+      const result = await mealsCollection.updateOne(filter, update);
+      res.send(result);
+    });
+
+    // get All upcoming meals
+    app.get("/upcomingMeals", async (req, res) => {
+      const result = await upcomingMealsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Increase like count in single upcomingMeal data
+    app.patch("/upcomingMeals/:id", async (req, res) => {
+      const id = req.params.id;
+      const { likes, likedBy } = req.body;
+      const filter = { _id: new ObjectId(id) };
+
+      const meal = await upcomingMealsCollection.findOne(filter);
+      if (meal?.likedBy?.includes(likedBy)) {
+        return res
+          .status(400)
+          .send({ error: "You have already liked this meal." });
+      }
+
+      // If the user hasn't liked the meal, proceed with updating
+      const update = {
+        $inc: { likes: 1 }, 
+        $addToSet: { likedBy }, 
+      };
+      const result = await upcomingMealsCollection.updateOne(filter, update);
       res.send(result);
     });
 
