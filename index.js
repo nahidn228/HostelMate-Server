@@ -31,6 +31,9 @@ async function run() {
     const upcomingMealsCollection = client
       .db("MealCollectionDB")
       .collection("upcomingMeals");
+    const reviewCollection = client
+      .db("MealCollectionDB")
+      .collection("reviews");
 
     // JWT related API
     app.post("/jwt", async (req, res) => {
@@ -206,7 +209,6 @@ async function run() {
           .status(400)
           .send({ error: "You have already liked this meal." });
       }
-      // If the user hasn't liked the meal, proceed with updating
       const update = {
         $inc: { likes: 1 },
         $addToSet: { likedBy },
@@ -216,7 +218,7 @@ async function run() {
     });
 
     // request Meal API
-    app.get("/requestMeal/:email",verifyToken, async (req, res) => {
+    app.get("/requestMeal/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const result = await requestMealsCollection.find(query).toArray();
@@ -228,6 +230,19 @@ async function run() {
       const data = req.body;
       const result = await requestMealsCollection.insertOne(data);
       res.send(result);
+    });
+
+    //Review related API
+    app.get("/reviews/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { reviewerEmail: email };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/reviews", verifyToken, async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
     });
 
     // Send a ping to confirm a successful connection
