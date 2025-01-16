@@ -216,8 +216,10 @@ async function run() {
     });
 
     // request Meal API
-    app.get("/requestMeal", async (req, res) => {
-      const result = await requestMealsCollection.find().toArray();
+    app.get("/requestMeal/:email",verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await requestMealsCollection.find(query).toArray();
       res.send(result);
     });
 
