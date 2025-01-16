@@ -74,7 +74,14 @@ async function run() {
 
     // User related API
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await usersCollection.find().toArray();
+      const search = req.query.search || "";
+      let query = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+      const result = await usersCollection.find(query).toArray();
       res.send(result);
     });
 
