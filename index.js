@@ -25,6 +25,9 @@ async function run() {
   try {
     const usersCollection = client.db("MealCollectionDB").collection("Users");
     const mealsCollection = client.db("MealCollectionDB").collection("Meals");
+    const requestMealsCollection = client
+      .db("MealCollectionDB")
+      .collection("requestMeals");
     const upcomingMealsCollection = client
       .db("MealCollectionDB")
       .collection("upcomingMeals");
@@ -209,6 +212,19 @@ async function run() {
         $addToSet: { likedBy },
       };
       const result = await upcomingMealsCollection.updateOne(filter, update);
+      res.send(result);
+    });
+
+    // request Meal API
+    app.get("/requestMeal", async (req, res) => {
+      const result = await requestMealsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/requestMeal/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const result = await requestMealsCollection.insertOne(data);
       res.send(result);
     });
 
