@@ -166,11 +166,55 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/allMeals", async (req, res) => {
+      try {
+        const sort = req.query.sort || "";
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const distributor = req.query.distributor || "";
+
+        // Build filters and options
+        let filter = {};
+        if (distributor) filter.distributorName = distributor;
+
+        let options = {};
+        if (sort) options.sort = { likes: sort === "asc" ? 1 : -1 };
+
+        // Pagination
+        const skip = (page - 1) * limit;
+        const result = await mealsCollection
+          .find(filter, options)
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        // Total count for pagination
+        const total = await mealsCollection.countDocuments(filter);
+
+        res.send({
+          meals: result,
+          total,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+        });
+      } catch (error) {
+        console.error("Error fetching meals:", error.message);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch meals", error: error.message });
+      }
+    });
+
     //get single meal
     app.get("/meals/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await mealsCollection.findOne(query);
+      res.send(result);
+    });
+    app.post("/meal", verifyToken, async (req, res) => {
+      const newMeal = req.body;
+      const result = await mealsCollection.insertOne(newMeal);
       res.send(result);
     });
 
@@ -225,6 +269,18 @@ async function run() {
     });
 
     // request Meal API
+    app.get("/requestMeal", verifyToken, verifyAdmin, async (req, res) => {
+      const search = req.query.search || "";
+      let query = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+      const result = await requestMealsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get("/requestMeal/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -232,18 +288,43 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/requestMeal/:id", async (req, res) => {
+    app.post("/requestMeal/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const result = await requestMealsCollection.insertOne(data);
       res.send(result);
     });
 
+    // Deliver food (request Meal)
+    app.patch(
+      "/requestMeal/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            status: "Delivered ",
+          },
+        };
+        const result = await requestMealsCollection.updateOne(
+          filter,
+          updatedDoc
+        );
+        res.send(result);
+      }
+    );
+
     //Review related API
     app.get("/reviews/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { reviewerEmail: email };
       const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/reviews", verifyToken, async (req, res) => {
+      const result = await reviewCollection.find().toArray();
       res.send(result);
     });
 
