@@ -243,7 +243,14 @@ async function run() {
     });
 
     // get All upcoming meals
-    app.get("/upcomingMeals", async (req, res) => {
+
+    //this api for client side
+    app.get("/upcoming", async (req, res) => {
+      const result = await upcomingMealsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/upcomingMeals", verifyToken, async (req, res) => {
       try {
         const sort = req.query.sort || "";
         const page = parseInt(req.query.page) || 1;
