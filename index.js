@@ -244,7 +244,46 @@ async function run() {
 
     // get All upcoming meals
     app.get("/upcomingMeals", async (req, res) => {
-      const result = await upcomingMealsCollection.find().toArray();
+      try {
+        const sort = req.query.sort || "";
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const distributor = req.query.distributor || "";
+
+        // Build filters and options
+        let filter = {};
+        if (distributor) filter.distributorName = distributor;
+
+        let options = {};
+        if (sort) options.sort = { likes: sort === "asc" ? 1 : -1 };
+
+        // Pagination
+        const skip = (page - 1) * limit;
+        const result = await upcomingMealsCollection
+          .find(filter, options)
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+        // Total count for pagination
+        const total = await upcomingMealsCollection.countDocuments(filter);
+        res.send({
+          meals: result,
+          total,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+        });
+      } catch (error) {
+        console.error("Error fetching meals:", error.message);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch meals", error: error.message });
+      }
+    });
+
+    app.delete("/upcomingMeals/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await upcomingMealsCollection.deleteOne(query);
       res.send(result);
     });
 
