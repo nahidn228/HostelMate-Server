@@ -280,6 +280,12 @@ async function run() {
       }
     });
 
+    app.post("/upcomingMeals", verifyToken, async (req, res) => {
+      const newMeal = req.body;
+      const result = await upcomingMealsCollection.insertOne(newMeal);
+      res.send(result);
+    });
+
     app.delete("/upcomingMeals/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
