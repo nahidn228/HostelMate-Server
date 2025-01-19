@@ -444,12 +444,30 @@ async function run() {
     });
 
     app.post("/payments", async (req, res) => {
-      const { price, email, ...payment } = req.body;
-      const paymentResult = await paymentsCollection.insertOne(payment);
+      const { email, price, ...payment } = req.body;
+      const payments = req.body;
+      const paymentResult = await paymentsCollection.insertOne(payments);
 
       const query = { email: email };
+
+      // return console.log({ query, payments });
+
       const deleteCart = await cartCollection.deleteMany(query);
-      res.send({ paymentResult, deleteCart });
+
+      let badge = "";
+      if (price === 100) {
+        badge = "Silver";
+      } else if (price === 150) {
+        badge = "Gold";
+      } else {
+        badge = "Platinum";
+      }
+
+      const updateBadge = await usersCollection.updateOne(query, {
+        $set: { badge: badge },
+      });
+
+      res.send({ paymentResult, deleteCart, updateBadge });
     });
 
     // Send a ping to confirm a successful connection
