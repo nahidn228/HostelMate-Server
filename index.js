@@ -40,8 +40,11 @@ async function run() {
 
     // JWT related API
     app.post("/jwt", async (req, res) => {
-      //payload
       const user = req.body;
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required." });
+      }
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "5h",
       });
@@ -215,7 +218,7 @@ async function run() {
       const result = await mealsCollection.findOne(query);
       res.send(result);
     });
-    app.post("/meal", verifyToken, async (req, res) => {
+    app.post("/meal", verifyToken, verifyAdmin, async (req, res) => {
       const newMeal = req.body;
       const result = await mealsCollection.insertOne(newMeal);
       res.send(result);
@@ -234,12 +237,20 @@ async function run() {
     });
 
     // Increase like count in single meal data
+
     app.patch("/meals/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-
+      const { likes, likedBy } = req.body;
       const filter = { _id: new ObjectId(id) };
+      const meal = await mealsCollection.findOne(filter);
+      if (meal?.likedBy?.includes(likedBy)) {
+        return res
+          .status(400)
+          .send({ error: "You have already liked this meal." });
+      }
       const update = {
         $inc: { likes: 1 },
+        $addToSet: { likedBy },
       };
       const result = await mealsCollection.updateOne(filter, update);
       res.send(result);
@@ -308,7 +319,6 @@ async function run() {
       const id = req.params.id;
       const { likes, likedBy } = req.body;
       const filter = { _id: new ObjectId(id) };
-
       const meal = await upcomingMealsCollection.findOne(filter);
       if (meal?.likedBy?.includes(likedBy)) {
         return res
@@ -434,11 +444,9 @@ async function run() {
     });
 
     app.get("/payments/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      if (email !== req.decoded.email) {
-        return res.status(403).send("forbidden access");
-      }
+      const { email, ...data } = req.body;
+      const email1 = req.params.email;
+      const query = { email: email1 };
       const result = await paymentsCollection.find(query).toArray();
       res.send(result);
     });
