@@ -444,10 +444,12 @@ async function run() {
     });
 
     app.post("/payments", async (req, res) => {
-      const payment = req.body;
+      const { price, email, ...payment } = req.body;
       const paymentResult = await paymentsCollection.insertOne(payment);
 
-      res.send({ paymentResult });
+      const query = { email: email };
+      const deleteCart = await cartCollection.deleteMany(query);
+      res.send({ paymentResult, deleteCart });
     });
 
     // Send a ping to confirm a successful connection
