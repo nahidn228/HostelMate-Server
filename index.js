@@ -20,6 +20,13 @@ const client = new MongoClient(uri, {
   },
 });
 
+async function connectDB() {
+  if (!client.topology || !client.topology.isConnected()) {
+    await client.connect();
+  }
+  return client.db("MealCollectionDB");
+}
+
 async function run() {
   try {
     const usersCollection = client.db("MealCollectionDB").collection("Users");
@@ -264,7 +271,6 @@ async function run() {
       res.send(result);
     });
 
-
     app.get("/upcomingMeals", verifyToken, async (req, res) => {
       try {
         const sort = req.query.sort || "";
@@ -362,7 +368,7 @@ async function run() {
     });
 
     // Deliver food (request Meal)
-    
+
     app.patch(
       "/requestMeal/:id",
       verifyToken,
@@ -478,6 +484,53 @@ async function run() {
       });
 
       res.send({ paymentResult, deleteCart, updateBadge });
+    });
+
+    /**
+     * ***************************************************************
+     *  Dashboard  Collection
+     * ***************************************************************
+     * */
+
+    //get all data for a specific user
+
+    app.get("/dashboard-data/:email", async (req, res) => {
+      const { email } = req.params;
+
+      try {
+        const db = await connectDB();
+
+        // Fetch user-specific data using email
+        const user = await db.collection("Users").findOne({ email });
+        const reviewerMail = await db.collection("reviews").findOne({ email });
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        // const userId = user._id;
+
+        // Fetch all related data in parallel using Promise.all()
+        const [carts, payments, requestMeals, reviews] = await Promise.all([
+          db.collection("carts").find({ email }).toArray(),
+          db.collection("payments").find({ email }).toArray(),
+          db.collection("requestMeals").find({ email }).toArray(),
+          db.collection("reviews").find({ reviewerMail }).toArray(),
+          db.collection("upcomingMeals").find().toArray(),
+          db.collection("Meals").find().toArray(),
+        ]);
+
+        res.json({
+          user,
+          carts,
+          payments,
+          requestMeals,
+          reviews,
+        });
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).json({ error: "Error fetching data" });
+      }
     });
 
     // Send a ping to confirm a successful connection
