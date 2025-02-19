@@ -533,7 +533,7 @@ async function run() {
       }
     });
 
-    app.get("/adminDashboard/:email", async (req, res) => {
+    app.get("/adminDashboard/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
 
       try {
