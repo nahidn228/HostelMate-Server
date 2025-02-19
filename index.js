@@ -492,9 +492,9 @@ async function run() {
      * ***************************************************************
      * */
 
-    //get all data for a specific user
+    //get all data for an Admin
 
-    app.get("/dashboard-data/:email", async (req, res) => {
+    app.get("/dashboard-data/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
 
       try {
@@ -526,6 +526,54 @@ async function run() {
           payments,
           requestMeals,
           reviews,
+        });
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).json({ error: "Error fetching data" });
+      }
+    });
+
+    app.get("/adminDashboard/:email", async (req, res) => {
+      const { email } = req.params;
+
+      try {
+        const db = await connectDB();
+
+        // Fetch user-specific data using email
+        const user = await db.collection("Users").findOne({ email });
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        // Fetch all related data in parallel using Promise.all()
+        const [
+          carts,
+          payments,
+          requestMeals,
+          reviews,
+          upcomingMeals,
+          Meals,
+          Users,
+        ] = await Promise.all([
+          db.collection("carts").find().toArray(),
+          db.collection("payments").find().toArray(),
+          db.collection("requestMeals").find().toArray(),
+          db.collection("reviews").find().toArray(),
+          db.collection("upcomingMeals").find().toArray(),
+          db.collection("Meals").find().toArray(),
+          db.collection("Users").find().toArray(),
+        ]);
+
+        res.json({
+          user,
+          carts,
+          payments,
+          requestMeals,
+          reviews,
+          upcomingMeals,
+          Meals,
+          Users,
         });
       } catch (error) {
         console.error("Error fetching user data:", error);
